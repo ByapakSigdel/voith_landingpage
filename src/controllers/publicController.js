@@ -50,7 +50,7 @@ const getImageById = async (req, res) => {
   }
 };
 
-// Get image file (public)
+// Get image file (public) — redirects to ImageKit URL
 const getImageFile = async (req, res) => {
   try {
     const { filename } = req.params;
@@ -65,7 +65,8 @@ const getImageFile = async (req, res) => {
     }
 
     const image = result.rows[0];
-    res.sendFile(image.path);
+    // Redirect to the ImageKit CDN URL
+    res.redirect(image.url);
   } catch (error) {
     console.error('Get image file error:', error);
     res.status(500).json({ 
