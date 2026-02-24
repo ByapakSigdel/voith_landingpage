@@ -18,4 +18,9 @@ module.exports = {
     email: process.env.ADMIN_EMAIL || 'admin@voith.com',
     password: process.env.ADMIN_PASSWORD || 'Admin@123',
   },
+  imagekit: {
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY || '',
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || '',
+  },
 };

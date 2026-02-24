@@ -1,8 +1,13 @@
 const db = require('../config/database');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config');
+const ImageKit = require('@imagekit/nodejs').default;
 
-// Upload image
+// Initialize ImageKit
+const imagekit = new ImageKit({
+  privateKey: config.imagekit.privateKey,
+});
+
+// Upload image to ImageKit
 const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
@@ -12,25 +17,31 @@ const uploadImage = async (req, res) => {
       });
     }
 
-    const { filename, originalname, mimetype, size, path: filepath } = req.file;
+    const { originalname, mimetype, size, buffer } = req.file;
 
-    // Construct public URL for the uploaded file
-    const host = req.headers.host || '';
-    const protocol = req.protocol || 'http';
-    // public URL serves file via /images/file/:filename
-    const url = `${protocol}://${host}/images/file/${encodeURIComponent(filename)}`;
+    // Upload to ImageKit
+    const ikResponse = await imagekit.files.upload({
+      file: buffer.toString('base64'),
+      fileName: originalname,
+      folder: '/voith',
+    });
+
+    const filename = ikResponse.name || originalname;
+    const url = ikResponse.url;
+    const fileId = ikResponse.fileId;
+    const filePath = ikResponse.filePath || '';
 
     const result = await db.query(
       `INSERT INTO images (filename, original_name, mime_type, size, path, url, uploaded_by) 
        VALUES ($1, $2, $3, $4, $5, $6, $7) 
        RETURNING *`,
-      [filename, originalname, mimetype, size, filepath, url, req.admin.id]
+      [filename, originalname, mimetype, size, filePath, url, req.admin.id]
     );
 
     res.status(201).json({
       success: true,
       message: 'Image uploaded successfully',
-      data: result.rows[0]
+      data: { ...result.rows[0], imagekit_file_id: fileId }
     });
   } catch (error) {
     console.error('Upload image error:', error);
@@ -76,13 +87,6 @@ const deleteImage = async (req, res) => {
         success: false, 
         message: 'Image not found' 
       });
-    }
-
-    const image = result.rows[0];
-
-    // Delete file from filesystem
-    if (fs.existsSync(image.path)) {
-      fs.unlinkSync(image.path);
     }
 
     // Delete from database
